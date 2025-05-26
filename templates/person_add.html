@@ -1,0 +1,19 @@
+<form method="POST" action="{{ url_for('add_person') }}">
+    <label for="name">Имя:</label>
+    <input type="text" id="name" name="name" required maxlength="24">
+
+    <label for="status">Статус:</label>
+    <select name="status">
+    {% for status in statuses %}
+        <option value="{{ status.value }}">{{ status.value }}</option>
+    {% endfor %}
+    </select>
+
+    <label for="arrival">Дата прибытия:</label>
+    <input type="date" id="arrival" name="arrival">
+
+    <label for="departure">Дата выбытия:</label>
+    <input type="date" id="departure" name="departure">
+
+    <button type="submit">Добавить</button>
+</form>

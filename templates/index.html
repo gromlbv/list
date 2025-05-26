@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+
+{% block title %}
+
+{% endblock title %}
+
+
+
+{% block content %}
+
+<header>
+    <div class="top flex-between">
+        <button class="no-fill">
+            <p>Санаторий МО</p>
+        </button>
+        <button class="no-fill">
+            <p>Акимова Анна Валерьевна</p>
+        </button>
+    </div>
+
+    <div class="middle flex-between">
+        <div class="right-side flex-cl gap-8">
+            <h1>Добрый день, Анна!</h1>
+            <p>На сегодня - 4 пациента</p>
+        </div>
+        <div class="left-side flex gap-6">
+            <button class="fill upside">
+                <h1>{{ stats.not_ready | default(0) }}</h1>
+                <p>Не готовы</p>
+            </button>
+            <button class="fill upside">
+                <h1>{{ stats.in_work | default(0) }}</h1>
+                <p>В работе</p>
+            </button>
+            <button class="fill upside">
+                <h1>{{ stats.ready | default(0) }}</h1>
+                <p>Готовы</p>
+            </button>
+        </div>
+    </div>
+
+    <div class="btn-wrapper flex gap-6">
+        <button id="open-add-popup" class="fill remove-text">
+            <img src="{{ url_for('static', filename='icons/patient-add.svg') }}">
+            Добавить пациента
+        </button>
+
+        <div class="status-wrapper">
+            <button class="fill status-btn" data-status="0">
+                <h1>{{ stats.not_ready | default(0) }}</h1>
+                <img src="{{ url_for('static', filename='icons/xmark.svg') }}" alt="">
+            </button>
+            <button class="fill status-btn" data-status="1">
+                <h1>{{ stats.in_work | default(0) }}</h1>
+                <img src="{{ url_for('static', filename='icons/clock.svg') }}" alt="">
+
+            </button>
+            <button class="fill status-btn" data-status="2">
+                <h1>{{ stats.ready | default(0) }}</h1>
+                <img src="{{ url_for('static', filename='icons/check.svg') }}" alt="">
+            </button>
+        </div>
+        
+        <button class="fill remove-text">
+            <img src="{{ url_for('static', filename='icons/search.svg') }}">
+            Поиск
+        </button>
+    </div>
+
+
+</header>
+
+<div class="person-wrapper">
+    <div class="sort-wrapper">
+        <select id="sort-select">
+            <option value="created" {% if current_sort == 'created' %}selected{% endif %}>По добавлению</option>
+            <option value="status" {% if current_sort == 'status' %}selected{% endif %}>По статусу</option>
+            <option value="name" {% if current_sort == 'name' %}selected{% endif %}>По имени</option>
+        </select>
+
+        <button id="toggle-order" class="sort-order-btn {% if current_order == 'asc' %}inverted{% endif %}">
+            <img src="{{ url_for('static', filename='icons/arrow-down.svg') }}">
+        </button>
+    </div>
+
+    <script>
+        $(function () {
+            const $sortSelect = $('#sort-select');
+            const $orderBtn = $('#toggle-order');
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentSort = urlParams.get('sort') || 'created_desc';
+            let [sort, order] = currentSort.includes('_') ? currentSort.split('_') : [currentSort, 'desc'];
+
+            let orderInverted = order === 'asc';
+
+            if (orderInverted) {
+                $orderBtn.addClass('inverted');
+            }
+
+            // обновляем URL и перезагружаем
+            function updateSort() {
+                const newOrder = orderInverted ? 'asc' : 'desc';
+                const newSort = $sortSelect.val();
+                const url = new URL(window.location.href);
+                url.searchParams.set('sort', `${newSort}_${newOrder}`);
+                window.location.href = url.toString();
+            }
+
+            $sortSelect.val(sort);
+
+            $sortSelect.on('change', function () {
+                updateSort();
+            });
+
+            $orderBtn.on('click', function () {
+                orderInverted = !orderInverted;
+                $orderBtn.toggleClass('inverted');
+                updateSort();
+            });
+        });
+    </script>
+
+
+    {% for p in persons %}
+
+    <a class="link-row" data-href="/person/{{ p.id }}" data-status="{{ p.status_display() }}">
+        <div class="flex-cl main">
+            <h3>{{ p.name }}</h3>
+            <p>{{ p.arrival }} по {{ p.departure }}</p>
+        </div>
+        
+        <p>{{ p.status_display() }}</p>
+        
+        <!-- <p>{{ p.days_left() }}</p> -->
+    </a>
+
+    {% endfor %}
+</div>
+<table>
+    <thead>
+        <tr>
+            <th>Имя</th>
+            <th>Статус</th>
+            <th>Время заезда</th>
+            <th>Осталось дней</th>
+        </tr>
+    </thead>
+    {% for p in persons %}
+    <tr class="link-row" data-href="/person/{{ p.id }}">
+        <td>
+            {{ p.name }}
+
+            <div class="btn-wr">
+                <button class="promote-btn" data-id="{{ p.id }}">
+                    <img src="{{ url_for('static', filename='icons/arrow-up.svg') }}" alt="">
+                </button>
+                <button>
+                    <img src="{{ url_for('static', filename='icons/arrow-down.svg') }}" alt="">
+                </button>
+                <button>
+                    <img src="{{ url_for('static', filename='icons/dots.svg') }}" alt="">
+                </button>
+            </div>
+        </td>
+
+        <td>{{ p.status_display() }}</td>
+        <td>{{ p.arrival }} по {{ p.departure }}</td>
+        <td>{{ p.days_left() }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<div id="edit-popup" class="popup hidden">
+    <div class="popup-wrapper">
+        <button type="button" id="cancel-btn" class="fill">
+            <img src="{{ url_for('static', filename='icons/close.svg') }}" alt="✕">
+        </button>
+        
+        <form id="edit-form">
+            <div class="input-wrapper">
+                <h2>Изменить</h2>
+
+                <input type="hidden" name="id" id="person-id">
+
+                <label>Имя</label>
+                <input type="text" name="name" id="person-name">
+
+                <label>Статус</label>
+                <select name="status" id="person-status">
+                    <option value="0">Не готов</option>
+                    <option value="1">В работе</option>
+                    <option value="2">Готов</option>
+                </select>
+
+                <div class="flex gap-6">
+                    <div class="flex-cl">
+                        <label>Заезд</label>
+                        <input type="date" name="arrival" id="person-arrival">
+                    </div>
+                    <div class="flex-cl">
+                        <label>Выезд</label>
+                        <input type="date" name="departure" id="person-departure">
+                    </div>
+                </div>
+
+                <button class="additional danger" id="delete-btn">Удалить</button>
+            </div>
+
+            <button type="submit" class="fill">Сохранить</button>
+
+        </form>
+
+    </div>
+</div>
+
+<div id="add-popup" class="popup hidden">
+    <div class="popup-wrapper">
+        <button type="button" id="add-cancel-btn" class="fill">
+            <img src="{{ url_for('static', filename='icons/close.svg') }}" alt="✕">
+        </button>
+
+        <form id="add-form">
+
+            <div class="input-wrapper">
+                <h2>Новый пациент</h2>
+
+                <label>Имя</label>
+                <input type="text" name="name" id="add-name" placeholder="Иван Громов Юрьевич" required>
+
+                <label>Статус</label>
+                <select name="status" id="add-status" required>
+                    <option value="0">Не готов</option>
+                    <option value="1">В работе</option>
+                    <option value="2">Готов</option>
+                </select>
+
+                <div class="flex gap-6">
+                    <div class="flex-cl">
+                        <label>Заезд</label>
+                        <input type="date" name="arrival" id="person-arrival" value="{{ today }}">
+                    </div>
+                    <div class="flex-cl">
+                        <label>Выезд</label>
+                        <input type="date" name="departure" id="person-departure" value="{{ today_add_7 }}">
+                    </div>
+                </div>
+            </div>
+            
+            <button type="submit" class="fill">Добавить</button>
+
+        </form>
+    </div>
+</div>
+
+
+<script>
+    $(".status-btn").click(function () {
+        const selectedStatus = $(this).data("status");
+
+        $(".status-btn").removeClass("active");
+
+        $(this).addClass("active");
+
+        $(".link-row").each(function () {
+            const rowStatus = $(this).data("status");
+            if (rowStatus == selectedStatus) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+</script>
+
+<script>
+    const themeMetaTag = document.querySelector('meta[name="theme-color"]');
+
+    function darkMetaTag() {
+        if (themeMetaTag) {
+            themeMetaTag.setAttribute('content', '#13678E');
+        }
+    }
+    function blueMetaTag() {
+        if (themeMetaTag) {
+            themeMetaTag.setAttribute('content', '#1FABEC');
+        }
+    }
+    $(".link-row").click(function () {
+        const main = $(this).find(".main");
+        const name = main.find("h3").text().trim();
+        const dateText = main.find("p").text().trim();
+        const [arrival, departure] = dateText.split(" по ").map(s => s.trim());
+        const statusText = $(this).find("p").not(main.find("p")).text().trim();
+        const id = $(this).data("href").toString().split("/").pop();
+
+        let statusValue = 0;
+        if (statusText === "В работе") statusValue = 1;
+        else if (statusText === "Готов") statusValue = 2;
+
+        $("#person-id").val(id);
+        $("#person-name").val(name);
+        $("#person-arrival").val(arrival);
+        $("#person-departure").val(departure);
+        $("#person-status").val(statusValue);
+
+        $("#edit-popup").removeClass("hidden");
+
+        darkMetaTag()
+    });
+
+
+    $("#edit-form").submit(function (event) {
+        event.preventDefault();
+
+        const formData = $(this).serialize();
+
+        $.post("/person/edit", formData)
+            .done(function () {
+                location.reload();
+            })
+            // .fail(function () {
+            //     alert("Ошибка при сохранении.");
+            // });
+    });
+
+    $("#cancel-btn").click(function () {
+        $("#edit-popup").addClass("hidden");
+        blueMetaTag()
+    });
+
+
+    $('#open-add-popup').click(function () {
+        $('#add-popup').removeClass('hidden');
+        darkMetaTag()
+    });
+
+    $('#add-cancel-btn').click(function () {
+        $('#add-popup').addClass('hidden');
+        $('#add-form')[0].reset();
+        blueMetaTag()
+    });
+
+    $('#add-form').submit(function (event) {
+        event.preventDefault();
+
+        $.ajax({
+            url: '/person/add',
+            method: 'POST',
+            data: $(this).serialize(),
+            success: function (response) {
+                $('#add-popup').addClass('hidden');
+                $('#add-form')[0].reset();
+                location.reload();
+            },
+            error: function (xhr) {
+                alert(xhr.responseJSON.message || 'Ошибка при добавлении');
+            }
+        });
+    });
+
+    $("#delete-btn").click(function () {
+        const id = $("#person-id").val();
+        if (!id) return;
+
+        if (confirm("Удалить этого пациента?")) {
+            $.ajax({
+                url: `/person/delete/${id}`,
+                method: 'POST',
+                success: function () {
+                    location.reload();
+                },
+                error: function () {
+                    alert("Ошибка при удалении.");
+                }
+            });
+        }
+    });
+
+    $('.wrapper').on("scroll", function () {
+        if ($(this).scrollTop() > 0) {
+            $("header").addClass("scrolled");
+        } else {
+            $("header").removeClass("scrolled");
+        }
+    });
+
+    document.addEventListener('gesturestart', function (e) {
+        e.preventDefault();
+    });
+    document.addEventListener('touchstart', function preventZoom(e) {
+        if (e.touches.length > 1) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', function (e) {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+            e.preventDefault(); // запрет double-tap zoom
+        }
+        lastTouchEnd = now;
+    }, false);
+
+    // document.addEventListener('touchstart', function(e) {
+    // if (e.target.matches('div, span, p, h1, h2, h3, h4, h5, h6')) {
+    //     e.preventDefault();
+    // }
+    // }, { passive: false });
+
+</script>
+
+
+
+{% endblock content %}

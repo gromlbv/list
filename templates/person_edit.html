@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}
+
+{% endblock title %}
+
+
+
+{% block content %}
+
+<h2>{{ person.name }}</h2>
+<p>Статус: {{ person.status_display() }}</p>
+<p>Заезд: {{ person.arrival }}</p>
+<p>Выезд: {{ person.departure }}</p>
+<p>Осталось дней: {{ person.days_left() }}</p>
+<a href="/">Назад</a>
+
+{% endblock content %}
